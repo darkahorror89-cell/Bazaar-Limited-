@@ -1,0 +1,156 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default catch-all security net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE SECURITY PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY-SPECIFIC SCHEMAS (Validation Blueprints) ---
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name', 'description', 'price', 'category', 'imageUrl', 'stock', 'createdAt'])
+        && data.keys().size() <= 10
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.description is string && data.description.size() <= 5000
+        && data.price is number && data.price >= 0.0
+        && data.category is string && data.category.size() <= 100
+        && data.imageUrl is string && data.imageUrl.size() <= 1000
+        && data.stock is int && data.stock >= 0
+        && data.rating is number && data.rating >= 0.0 && data.rating <= 5.0;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['id', 'userId', 'items', 'totalAmount', 'status', 'paymentStatus', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 10
+        && data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId == request.auth.uid
+        && data.totalAmount is number && data.totalAmount >= 0.0
+        && data.status is string && data.status in ['pending', 'processing', 'shipped', 'out_for_delivery', 'completed', 'cancelled']
+        && data.paymentStatus is string && data.paymentStatus in ['unpaid', 'paid', 'failed']
+        && data.items is list && data.items.size() <= 100;
+    }
+
+    function isValidChat(data) {
+      return data.keys().hasAll(['id', 'userId', 'messages', 'updatedAt'])
+        && data.keys().size() == 4
+        && data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId == request.auth.uid
+        && data.messages is list && data.messages.size() <= 1000;
+    }
+
+    function isValidLiveStream(data) {
+      return data.keys().hasAll(['id', 'title', 'titleBn', 'sellerName', 'sellerAvatar', 'viewersCount', 'featuredProductIds', 'videoUrl', 'isBroadcasting', 'createdAt'])
+        && data.keys().size() <= 11
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 500
+        && data.titleBn is string && data.titleBn.size() <= 500
+        && data.sellerName is string && data.sellerName.size() <= 200
+        && data.sellerAvatar is string && data.sellerAvatar.size() <= 10
+        && data.viewersCount is int
+        && data.featuredProductIds is list
+        && data.videoUrl is string && data.videoUrl.size() <= 2000
+        && data.isBroadcasting is bool;
+    }
+
+    function isValidLiveChat(data) {
+      return data.keys().hasAll(['streamId', 'user', 'text', 'userId', 'timestamp'])
+        && data.keys().size() == 5
+        && data.streamId is string && data.streamId.size() <= 128
+        && data.user is string && data.user.size() <= 200
+        && data.text is string && data.text.size() <= 1000
+        && data.userId is string && data.userId.size() <= 128;
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. Products: Public reading. Writes restricted to verified sellers/users.
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isEmailVerified() && isValidId(productId) && isValidProduct(incoming()) && incoming().id == productId;
+      allow update: if isEmailVerified() && isValidId(productId) && isValidProduct(incoming()) && incoming().id == productId;
+      allow delete: if isEmailVerified();
+    }
+
+    // 2. Orders: Access is isolated to the order owner. Only specific actions allowed for updates.
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(orderId) && isValidOrder(incoming()) && incoming().id == orderId;
+      allow update: if isSignedIn() && isValidId(orderId) && isValidOrder(incoming()) && incoming().id == orderId && existing().userId == request.auth.uid
+        && (
+          // Action 1: Customer Cancelling a Pending Order
+          (incoming().status == 'cancelled' && existing().status == 'pending' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+          // Action 2: Standard payment status updates (e.g. from redirect gateways like SSLCommerz)
+          (incoming().diff(existing()).affectedKeys().hasOnly(['paymentStatus', 'paymentId', 'updatedAt']))
+        );
+      allow delete: if false; // Orders cannot be deleted to preserve financial audit trail
+    }
+
+    // 3. Chats: Support logs are strictly owner-only.
+    match /chats/{chatId} {
+      allow get: if isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(chatId) && isValidChat(incoming()) && incoming().id == chatId;
+      allow update: if isSignedIn() && isValidId(chatId) && isValidChat(incoming()) && incoming().id == chatId && existing().userId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // 4. Users: Saved shipping details and profile state. Restricted to the authentic owner.
+    match /users/{userId} {
+      allow read: if isSignedIn() && userId == request.auth.uid;
+      allow write: if isSignedIn() && userId == request.auth.uid;
+    }
+
+    // 5. Reviews: Anyone can read, signed-in or guest users can write.
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow write, create, update: if true;
+    }
+
+    // 6. Referrals: Tracking of referral codes and rewards.
+    match /referrals/{referralId} {
+      allow get: if isSignedIn() && (resource.data.referrerUid == request.auth.uid || resource.data.refereeUid == request.auth.uid);
+      allow list: if isSignedIn() && (resource.data.referrerUid == request.auth.uid || resource.data.refereeUid == request.auth.uid);
+      allow create: if isSignedIn() && referralId == request.auth.uid && incoming().refereeUid == request.auth.uid;
+      allow update: if isSignedIn() && (existing().referrerUid == request.auth.uid || existing().refereeUid == request.auth.uid);
+      allow delete: if false;
+    }
+
+    // 7. Live Streams: Anyone can watch. Verified/signed in users can host/broadcast.
+    match /live_streams/{streamId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && isValidId(streamId) && isValidLiveStream(incoming());
+      allow delete: if isSignedIn();
+    }
+
+    // 8. Live Chats: Anyone can read messages during broadcast, signed in users can send messages.
+    match /live_chats/{chatId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidLiveChat(incoming());
+      allow update, delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}

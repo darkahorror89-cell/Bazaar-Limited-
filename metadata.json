@@ -1,0 +1,6 @@
+{
+  "name": "Bazar Limited",
+  "description": "An AI-powered full-stack E-commerce web app with product recommendations, image-based search, live support, description generator, and SSLCommerz payment integration.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

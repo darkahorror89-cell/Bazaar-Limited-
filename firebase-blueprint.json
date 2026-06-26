@@ -1,0 +1,236 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "An e-commerce product available for purchase.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique product ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Product name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the product"
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the product"
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL to the product image"
+        },
+        "stock": {
+          "type": "integer",
+          "description": "Available inventory count"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Average user rating"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the product was created"
+        }
+      },
+      "required": ["id", "name", "description", "price", "category", "imageUrl", "stock", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "An e-commerce order placed by a customer.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique order ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the user who placed the order"
+        },
+        "items": {
+          "type": "array",
+          "description": "List of ordered items with quantities"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total order value"
+        },
+        "status": {
+          "type": "string",
+          "description": "Order status",
+          "enum": ["pending", "processing", "completed", "cancelled"]
+        },
+        "paymentStatus": {
+          "type": "string",
+          "description": "Payment status",
+          "enum": ["unpaid", "paid", "failed"]
+        },
+        "paymentId": {
+          "type": "string",
+          "description": "SSLCommerz transaction ID"
+        },
+        "shippingAddress": {
+          "type": "object",
+          "description": "Customer shipping details"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the order was placed"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the order was last updated"
+        }
+      },
+      "required": ["id", "userId", "items", "totalAmount", "status", "paymentStatus", "createdAt", "updatedAt"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "A live support chat session between a user and the AI assistant.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique chat session ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the customer"
+        },
+        "messages": {
+          "type": "array",
+          "description": "Array of messages in the session"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last message"
+        }
+      },
+      "required": ["id", "userId", "messages", "updatedAt"]
+    },
+    "Referral": {
+      "title": "Referral",
+      "description": "A referral record tracking a referral invitation and discount coupons.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique referral ID (usually referee user ID)"
+        },
+        "referrerUid": {
+          "type": "string",
+          "description": "UID of the user who referred"
+        },
+        "refereeUid": {
+          "type": "string",
+          "description": "UID of the newly referred customer"
+        },
+        "refereeName": {
+          "type": "string",
+          "description": "Name of the newly referred customer"
+        },
+        "referrerCoupon": {
+          "type": "string",
+          "description": "Coupon code generated for the referrer"
+        },
+        "refereeCoupon": {
+          "type": "string",
+          "description": "Coupon code generated for the referee"
+        },
+        "referrerCouponUsed": {
+          "type": "boolean",
+          "description": "Whether the referrer has used their coupon"
+        },
+        "refereeCouponUsed": {
+          "type": "boolean",
+          "description": "Whether the referee has used their coupon"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the referral was established"
+        }
+      },
+      "required": ["id", "referrerUid", "refereeUid", "referrerCoupon", "refereeCoupon", "referrerCouponUsed", "refereeCouponUsed", "createdAt"]
+    },
+    "LiveStream": {
+      "title": "LiveStream",
+      "description": "A live streaming broadcast session by a merchant.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique stream ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the stream in English"
+        },
+        "titleBn": {
+          "type": "string",
+          "description": "Title of the stream in Bengali"
+        },
+        "sellerName": {
+          "type": "string",
+          "description": "Merchant seller display name"
+        },
+        "sellerAvatar": {
+          "type": "string",
+          "description": "Merchant profile avatar initials"
+        },
+        "viewersCount": {
+          "type": "integer",
+          "description": "Current number of live viewers"
+        },
+        "featuredProductIds": {
+          "type": "array",
+          "description": "List of product IDs featured in the stream"
+        },
+        "videoUrl": {
+          "type": "string",
+          "description": "URL of the streaming video file or stream feed"
+        },
+        "isBroadcasting": {
+          "type": "boolean",
+          "description": "Whether the live stream is currently active"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the stream started"
+        }
+      },
+      "required": ["id", "title", "titleBn", "sellerName", "sellerAvatar", "viewersCount", "featuredProductIds", "videoUrl", "isBroadcasting", "createdAt"]
+    }
+  },
+  "firestore": {
+    "products": {
+      "schema": "Product",
+      "description": "Collection of all items available in the store."
+    },
+    "orders": {
+      "schema": "Order",
+      "description": "Collection of user orders and transaction details."
+    },
+    "chats": {
+      "schema": "Chat",
+      "description": "Collection of support chats and messages."
+    },
+    "referrals": {
+      "schema": "Referral",
+      "description": "Collection of all e-commerce referral records and reward codes."
+    },
+    "live_streams": {
+      "schema": "LiveStream",
+      "description": "Collection of active and past merchant live broadcasts."
+    }
+  }
+}
